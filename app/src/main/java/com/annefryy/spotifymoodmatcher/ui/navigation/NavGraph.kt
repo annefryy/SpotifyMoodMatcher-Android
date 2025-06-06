@@ -1,89 +1,71 @@
 package com.annefryy.spotifymoodmatcher.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.annefryy.spotifymoodmatcher.ui.screens.HomeScreen
+import com.annefryy.spotifymoodmatcher.data.auth.SpotifyAuthManager
 import com.annefryy.spotifymoodmatcher.ui.screens.LoginScreen
 import com.annefryy.spotifymoodmatcher.ui.screens.MoodInputScreen
 import com.annefryy.spotifymoodmatcher.ui.screens.PlaylistPreviewScreen
-import com.annefryy.spotifymoodmatcher.ui.screens.HistoryScreen
-import com.annefryy.spotifymoodmatcher.ui.screens.SettingsScreen
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import android.app.Activity
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
-    object Home : Screen("home")
     object MoodInput : Screen("mood_input")
     object PlaylistPreview : Screen("playlist_preview/{playlistId}") {
         fun createRoute(playlistId: String) = "playlist_preview/$playlistId"
     }
-    object History : Screen("history")
-    object Settings : Screen("settings")
 }
 
 @Composable
 fun NavGraph(
     navController: NavHostController,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    authManager: SpotifyAuthManager,
+    activity: Activity
 ) {
+    val isAuthenticated by authManager.isAuthenticated.collectAsState()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Login.route
     ) {
         composable(Screen.Login.route) {
             LoginScreen(
-                onLoginSuccess = {
-                    navController.navigate(Screen.Home.route) {
+                onNavigateToMoodInput = {
+                    navController.navigate(Screen.MoodInput.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
-                }
-            )
-        }
-
-        composable(Screen.Home.route) {
-            HomeScreen(
-                onCreatePlaylist = { navController.navigate(Screen.MoodInput.route) },
-                onViewHistory = { navController.navigate(Screen.History.route) },
-                onSettings = { navController.navigate(Screen.Settings.route) }
+                },
+                authManager = authManager,
+                activity = activity
             )
         }
 
         composable(Screen.MoodInput.route) {
             MoodInputScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
                 onPlaylistGenerated = { playlist ->
                     navController.navigate(Screen.PlaylistPreview.createRoute(playlist.id))
                 }
             )
         }
 
-        composable(Screen.PlaylistPreview.route + "/{playlistId}") { backStackEntry ->
+        composable(
+            route = Screen.PlaylistPreview.route,
+        ) { backStackEntry ->
             val playlistId = backStackEntry.arguments?.getString("playlistId") ?: ""
             PlaylistPreviewScreen(
                 playlistId = playlistId,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-
-        composable(Screen.History.route) {
-            HistoryScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onPlaylistClick = { playlistId ->
-                    navController.navigate(Screen.PlaylistPreview.createRoute(playlistId))
-                }
-            )
-        }
-
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onLogout = {
-                    onLogout()
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
-                    }
+                onNavigateBack = {
+                    navController.popBackStack()
                 }
             )
         }
