@@ -1,0 +1,10 @@
+* text=auto
+*.kt linguist-language=Kotlin
+*.kts linguist-language=Kotlin
+*.gradle linguist-language=Gradle
+*.gradle.kts linguist-language=Gradle
+*.xml linguist-language=XML
+*.properties linguist-language=Properties
+*.md linguist-language=Markdown
+.gitattributes linguist-language=Git Attributes
+.gitignore linguist-language=Git Ignore
