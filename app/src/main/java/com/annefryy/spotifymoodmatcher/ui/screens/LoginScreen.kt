@@ -10,23 +10,28 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.annefryy.spotifymoodmatcher.R
 import com.annefryy.spotifymoodmatcher.data.auth.SpotifyAuthManager
+import com.spotify.sdk.android.auth.AuthorizationClient
+import com.spotify.sdk.android.auth.AuthorizationRequest
+import com.spotify.sdk.android.auth.AuthorizationResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import android.app.Activity
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
-    authManager: SpotifyAuthManager = hiltViewModel<LoginViewModel>().authManager
+    onNavigateToMoodInput: () -> Unit,
+    authManager: SpotifyAuthManager,
+    activity: Activity
 ) {
-    var isLoading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    val isAuthenticated by authManager.isAuthenticated.collectAsState()
+    var showError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        if (authManager.isAuthenticated()) {
-            onLoginSuccess()
+    LaunchedEffect(isAuthenticated) {
+        if (isAuthenticated) {
+            onNavigateToMoodInput()
         }
     }
 
@@ -54,38 +59,36 @@ fun LoginScreen(
         )
         
         Text(
-            text = "Create playlists based on your mood",
+            text = "Connect your Spotify account to get started",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 32.dp)
         )
         
-        if (error != null) {
+        if (showError) {
             Text(
-                text = error!!,
+                text = errorMessage ?: "An error occurred",
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
         }
         
-        if (isLoading) {
-            CircularProgressIndicator()
-        } else {
-            Button(
-                onClick = {
-                    isLoading = true
-                    error = null
-                    try {
-                        authManager.startAuth()
-                    } catch (e: Exception) {
-                        error = e.message
-                        isLoading = false
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Login with Spotify")
-            }
+        Button(
+            onClick = {
+                try {
+                    authManager.startAuth(activity)
+                    showError = false
+                    errorMessage = null
+                } catch (e: Exception) {
+                    showError = true
+                    errorMessage = e.message ?: "Failed to start authentication"
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+        ) {
+            Text("Connect with Spotify")
         }
     }
 }
